@@ -1,0 +1,103 @@
+import "config"
+import log, net
+
+pub struct Server {
+    config.Config *cfg
+    i8 fd = -1
+    bool running = false
+}
+
+pub Server *newServer(config.Config *cfg) {
+    if cfg is null {
+        log.error("cfg arg is null")
+        return null
+    }
+    
+    srv := Server {
+        cfg: cfg
+    }
+
+    Server *s = alloc(Server, 1).ptr 
+    *s = srv
+    return s
+}
+
+pub void Server.start() {
+    StrategyDispatch *strategy = newStrategyDispatch(self.cfg.routing.strategy, self.cfg.backends)
+    log.debug("configured the strategy dispatch: {strategy.strategy}")
+
+    ln := net.listen(self.cfg.proxy.listenPort) catch e {
+        log.error("could not listen on port {self.cfg.proxy.listenPort}: {e.message}")
+        return
+    }
+
+    log.info("tcp server started on {self.cfg.proxy.listenAddress}:{self.cfg.proxy.listenPort}")
+
+    for {
+        conn := ln.accept() catch e {
+            log.warn("could not accept connection: {e.message}")
+            continue
+        }
+
+        spawn self.handle(conn, strategy)
+    }
+}
+
+void Server.handle(net.Conn c, StrategyDispatch *strategy) {
+    defer c.close()
+
+    log.debug("client {c.fd()} ({c.remoteAddr()}) connected")
+
+    backend := strategy.dispatch() catch e {
+        log.error("could not dispatch the request: {e.message}")
+        return
+    }
+
+    log.debug("selected backend: {backend.name}")
+    
+    for {
+        scoped line := c.readLine(i64(self.cfg.proxy.maxPayload)) catch e {
+            if e.code == net.NetError.tooLong {
+                log.warn("rejected request from client {c.fd()} ({c.remoteAddr()}): payload too big")
+            }
+            return
+        }
+
+        scoped String upstreamResponse = self.callUpstream(backend.host, backend.port, backend.timeoutSeconds, self.cfg.proxy.maxPayload, line) catch e {
+            log.error("could not send the request to upstream {backend.host}:{backend.port}: {e.message}")
+            return
+        }
+
+        c.write(upstreamResponse) catch e {
+            log.error("could not send response back to client {c.fd()} ({c.remoteAddr()}), {e.message}")
+            return
+        }
+    }
+}
+
+!String Server.callUpstream(str ip, u16 port, u16 timeoutSeconds, u64 maxPayload, String payload) {
+    upstream := try net.dial(ip, port, timeoutSeconds)
+    defer upstream.close()
+
+    try upstream.write(payload)
+
+    String answer
+    
+    str buf = alloc(u8, i64(maxPayload))
+    defer free(buf)
+
+    for {
+        n := upstream.read(buf) catch e {
+            answer.free()
+            return e
+        }
+
+        if n == 0 {
+            break
+        }
+
+        answer.append(buf[0:n])
+    }
+
+    return answer
+}

@@ -1,0 +1,64 @@
+import fs, json, log
+
+pub enum StrategyType {
+    roundRobin,
+    weightedRoundRobin
+}
+
+@json
+pub struct Config {
+    pub Proxy           proxy
+    pub Routing         routing
+    pub List[Backend]   backends
+}
+
+@json
+pub struct Proxy {
+    @json("listen_address") pub String  listenAddress
+    @json("listen_port")    pub u16     listenPort = 8192
+    @json("max_payload")    pub u64     maxPayload = 64KiB
+}
+
+@json
+pub struct Routing {
+    pub StrategyType strategy = StrategyType.roundRobin
+}
+
+@json
+pub struct Backend {
+    pub String  name
+    pub String  host
+    pub u16     port
+    
+    @json("timeout_seconds") 
+    pub u16 timeoutSeconds  = 30
+    
+    pub u8  weight          = 1
+}
+
+pub Config *load(str path) {
+    if not fs.exists(path) {
+        log.error("path {path} does not exist")
+        return null
+    }
+
+    scoped text := fs.readAll(path) catch e {
+        log.error("could not read content of file at {path}: {e.message}")
+        return null
+    }
+
+    Config cfg = json.decode(Config, text) catch e {
+        log.error("could not decode json inside {path}: {e.message}")
+        return null
+    }
+
+    if cfg.proxy.listenAddress.len == 0 {
+        cfg.proxy.listenAddress = "0.0.0.0".copy()
+    }
+
+    cfg.proxy.maxPayload *= 1KiB
+
+    Config *p = alloc(Config, 1).ptr
+    *p = cfg
+    return p
+}

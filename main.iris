@@ -1,0 +1,20 @@
+import "config", "server"
+import log, os
+
+const configJson = "config.json"
+
+i32 main() { 
+    config.Config *cfg = config.load(configJson)
+    defer free(cfg)
+
+    os.exit(1) if cfg == null
+
+    log.info("config loaded successfully")
+
+    log.info("max payload {cfg.proxy.maxPayload}")
+
+    server.Server *srv = server.newServer(cfg)
+    srv.start()
+
+    os.exit(0)
+}

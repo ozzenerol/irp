@@ -1,0 +1,43 @@
+import "config"
+
+pub enum StrategyDispatchError {
+    invalidStrategy
+}
+
+pub struct StrategyDispatch {
+    config.StrategyType         strategy
+    List[config.Backend]        backends
+    i64                         counter  = 0
+}
+
+pub StrategyDispatch *newStrategyDispatch(config.StrategyType strategy, List[config.Backend] backends) {
+    dispatcher := StrategyDispatch {
+        strategy: strategy,
+        backends: backends,
+        counter:  0
+    }
+
+    StrategyDispatch *sd = alloc(StrategyDispatch, 1).ptr
+    *sd = dispatcher
+    return sd
+}
+
+pub !config.Backend StrategyDispatch.dispatch() {
+    Error invalidStrategyError = error(StrategyDispatchError.invalidStrategy, "invalid strategy {self.strategy}")
+
+    match self.strategy {
+        config.StrategyType.roundRobin          => return self.roundRobin()
+        config.StrategyType.weightedRoundRobin  => return self.weightedRoundRobin()
+        _                                       => return invalidStrategyError
+    }
+}
+
+config.Backend StrategyDispatch.roundRobin() {
+    config.Backend next = self.backends.at(self.counter % self.backends.len)
+    self.counter = (self.counter + 1) % self.backends.len
+    return next
+}
+
+config.Backend StrategyDispatch.weightedRoundRobin() {
+    return config.Backend {} 
+}
