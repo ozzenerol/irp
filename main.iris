@@ -11,8 +11,6 @@ i32 main() {
 
     log.info("config loaded successfully")
 
-    log.info("max payload {cfg.proxy.maxPayload}")
-
     server.Server *srv = server.newServer(cfg)
     srv.start()
 

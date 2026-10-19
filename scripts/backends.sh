@@ -96,7 +96,7 @@ start_instance() {
                 -e POSTGRES_USER="$PG_USER" \
                 -e POSTGRES_PASSWORD="$PG_PASSWORD" \
                 -e POSTGRES_DB="$PG_DB" \
-                "$IMAGE" >/dev/null
+                "$IMAGE" -c log_connections=on -c max_connections=1000 >/dev/null
             ;;
         redis)
             docker run -d --name "$name" \

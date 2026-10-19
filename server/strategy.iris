@@ -7,18 +7,13 @@ pub enum StrategyDispatchError {
 pub struct StrategyDispatch {
     config.StrategyType         strategy
     List[config.Backend]        backends
-    i64                         counter  = 0
+    Atomic[i64]                 counter
 }
 
 pub StrategyDispatch *newStrategyDispatch(config.StrategyType strategy, List[config.Backend] backends) {
-    dispatcher := StrategyDispatch {
-        strategy: strategy,
-        backends: backends,
-        counter:  0
-    }
-
     StrategyDispatch *sd = alloc(StrategyDispatch, 1).ptr
-    *sd = dispatcher
+    sd.strategy = strategy
+    sd.backends = backends
     return sd
 }
 
@@ -33,9 +28,8 @@ pub !config.Backend StrategyDispatch.dispatch() {
 }
 
 config.Backend StrategyDispatch.roundRobin() {
-    config.Backend next = self.backends.at(self.counter % self.backends.len)
-    self.counter = (self.counter + 1) % self.backends.len
-    return next
+    n := self.counter.add(1) - 1
+    return self.backends.at(n % self.backends.len)
 }
 
 config.Backend StrategyDispatch.weightedRoundRobin() {
