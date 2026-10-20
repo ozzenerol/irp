@@ -14,5 +14,8 @@ i32 main() {
     server.Server *srv = server.newServer(cfg)
     srv.start()
 
+    free(cfg)
+    free(srv)
+
     os.exit(0)
 }

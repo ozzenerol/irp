@@ -5,7 +5,7 @@
         "max_payload": 128
     },
     "routing": {
-        "strategy": "roundRobin"
+        "strategy": "weightedRoundRobin"
     },
     "backends": [
         {
@@ -40,6 +40,76 @@
             "name": "POSTGRES-5",
             "host": "192.168.1.155",
             "port": 15436,
+            "timeout_seconds": 30,
+            "weight": 1
+        },
+        {
+            "name": "POSTGRES-6",
+            "host": "192.168.1.155",
+            "port": 15437,
+            "timeout_seconds": 30,
+            "weight": 1
+        },
+        {
+            "name": "POSTGRES-7",
+            "host": "192.168.1.155",
+            "port": 15438,
+            "timeout_seconds": 30,
+            "weight": 1
+        },
+        {
+            "name": "POSTGRES-8",
+            "host": "192.168.1.155",
+            "port": 15439,
+            "timeout_seconds": 30,
+            "weight": 1
+        },
+        {
+            "name": "POSTGRES-9",
+            "host": "192.168.1.155",
+            "port": 15440,
+            "timeout_seconds": 30,
+            "weight": 1
+        },
+        {
+            "name": "POSTGRES-10",
+            "host": "192.168.1.155",
+            "port": 15441,
+            "timeout_seconds": 30,
+            "weight": 1
+        },
+        {
+            "name": "POSTGRES-11",
+            "host": "192.168.1.155",
+            "port": 15442,
+            "timeout_seconds": 30,
+            "weight": 1
+        },
+        {
+            "name": "POSTGRES-12",
+            "host": "192.168.1.155",
+            "port": 15443,
+            "timeout_seconds": 30,
+            "weight": 1
+        },
+        {
+            "name": "POSTGRES-13",
+            "host": "192.168.1.155",
+            "port": 15444,
+            "timeout_seconds": 30,
+            "weight": 1
+        },
+        {
+            "name": "POSTGRES-14",
+            "host": "192.168.1.155",
+            "port": 15445,
+            "timeout_seconds": 30,
+            "weight": 1
+        },
+        {
+            "name": "POSTGRES-15",
+            "host": "192.168.1.155",
+            "port": 15446,
             "timeout_seconds": 30,
             "weight": 1
         }

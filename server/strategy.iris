@@ -33,5 +33,27 @@ config.Backend StrategyDispatch.roundRobin() {
 }
 
 config.Backend StrategyDispatch.weightedRoundRobin() {
-    return config.Backend {} 
+    i64 total = 0
+    
+    for b in self.backends {
+        total += b.weight
+    }
+
+    if total == 0 {
+        return self.backends.at(0)
+    }
+
+    i64 slot = (self.counter.add(1) - 1) % total
+    if slot < 0 {
+        return self.backends.at(0)
+    }
+
+    for b in self.backends {
+        if slot < b.weight {
+            return b
+        }
+        slot -= b.weight
+    }
+
+    return self.backends.at(0)
 }
