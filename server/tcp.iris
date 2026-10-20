@@ -1,6 +1,5 @@
 import "config"
 import log, net
-import c "unistd.h"
 
 pub struct Server {
     config.Config *cfg
@@ -34,9 +33,7 @@ pub void Server.start() {
 
     log.info("tcp server started on {self.cfg.proxy.listenAddress}:{self.cfg.proxy.listenPort}")
 
-    // Using half of the cores
-    // This should be configurable in the future
-    cores := c.sysconf(c._SC_NPROCESSORS_ONLN) / 2
+    cores := self.cfg.proxy.cores
     for i in 1..cores {
         thread self.acceptLoop(ln, strategy)
     }
@@ -73,7 +70,8 @@ void Server.handle(net.Conn connection, StrategyDispatch *strategy) {
     defer upstream.close()
 
     done := chan[bool](2)
-    
+    defer done.free()
+
     spawn pipe(connection, upstream, done)
     spawn pipe(upstream, connection, done)
 

@@ -1,15 +1,22 @@
 import "config", "server"
-import log, os
+import log, os, flags
 
-const configJson = "config.json"
+@flags
+struct Args {
+    str configFile = "config.json"
+}
 
-i32 main() { 
-    config.Config *cfg = config.load(configJson)
+i32 main() {
+    scoped args := flags.parse(Args)
+
+    config.Config *cfg = config.load(args.configFile)
     defer free(cfg)
 
     os.exit(1) if cfg == null
 
-    log.info("config loaded successfully")
+    log.info("config {args.configFile} loaded successfully")
+    log.info("loaded {cfg.backends.len} backends")
+    log.info("using {cfg.proxy.cores} cores")
 
     server.Server *srv = server.newServer(cfg)
     srv.start()

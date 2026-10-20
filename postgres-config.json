@@ -1,0 +1,47 @@
+{
+    "proxy": {
+        "listen_address": "0.0.0.0",
+        "listen_port": 8317,
+        "cores": 2
+    },
+    "routing": {
+        "strategy": "weightedRoundRobin"
+    },
+    "backends": [
+        {
+            "name": "POSTGRES-1",
+            "host": "192.168.1.155",
+            "port": 15432,
+            "timeout_seconds": 30,
+            "weight": 1
+        },
+        {
+            "name": "POSTGRES-2",
+            "host": "192.168.1.155",
+            "port": 15433,
+            "timeout_seconds": 30,
+            "weight": 1
+        },
+        {
+            "name": "POSTGRES-3",
+            "host": "192.168.1.155",
+            "port": 15434,
+            "timeout_seconds": 30,
+            "weight": 1
+        },
+        {
+            "name": "POSTGRES-4",
+            "host": "192.168.1.155",
+            "port": 15435,
+            "timeout_seconds": 30,
+            "weight": 1
+        },
+        {
+            "name": "POSTGRES-5",
+            "host": "192.168.1.155",
+            "port": 15436,
+            "timeout_seconds": 30,
+            "weight": 1
+        }
+    ]
+}

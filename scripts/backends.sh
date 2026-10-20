@@ -31,11 +31,17 @@ PG_BASE_PORT=15432
 REDIS_IMAGE="redis:7-alpine"
 REDIS_BASE_PORT=16379
 
+MYSQL_IMAGE="mysql:8.4"
+MYSQL_USER="irp"
+MYSQL_PASSWORD="irp"
+MYSQL_DB="irp"
+MYSQL_BASE_PORT=13306
+
 usage() {
     cat <<EOF
-usage: $0 --service=<postgres|redis> [--instances=N] [--down]
+usage: $0 --service=<postgres|redis|mysql> [--instances=N] [--down]
 
-  --service=NAME   service to run: postgres, redis
+  --service=NAME   service to run: postgres, redis, mysql
   --instances=N    number of instances to start (default 1)
   --down           stop and remove all irp-<service>-* containers
 EOF
@@ -55,6 +61,7 @@ done
 case "$SERVICE" in
     postgres) IMAGE="$PG_IMAGE";    BASE_PORT="$PG_BASE_PORT";    INTERNAL_PORT=5432 ;;
     redis)    IMAGE="$REDIS_IMAGE"; BASE_PORT="$REDIS_BASE_PORT"; INTERNAL_PORT=6379 ;;
+    mysql)    IMAGE="$MYSQL_IMAGE"; BASE_PORT="$MYSQL_BASE_PORT"; INTERNAL_PORT=3306 ;;
     "")       echo "missing --service" >&2; usage 1 ;;
     *)        echo "unsupported service: $SERVICE" >&2; usage 1 ;;
 esac
@@ -103,6 +110,15 @@ start_instance() {
                 -p "$HOST:$port:$INTERNAL_PORT" \
                 "$IMAGE" >/dev/null
             ;;
+        mysql)
+            docker run -d --name "$name" \
+                -p "$HOST:$port:$INTERNAL_PORT" \
+                -e MYSQL_ROOT_PASSWORD="$MYSQL_PASSWORD" \
+                -e MYSQL_USER="$MYSQL_USER" \
+                -e MYSQL_PASSWORD="$MYSQL_PASSWORD" \
+                -e MYSQL_DATABASE="$MYSQL_DB" \
+                "$IMAGE" --max-connections=1000 >/dev/null
+            ;;
     esac
 }
 
@@ -110,12 +126,15 @@ is_ready() {
     case "$SERVICE" in
         postgres) docker exec "$1" pg_isready -q -U "$PG_USER" -d "$PG_DB" 2>/dev/null ;;
         redis)    docker exec "$1" redis-cli ping 2>/dev/null | grep -q PONG ;;
+        # Over TCP: the server MySQL runs while it sets up has no network.
+        mysql)    docker exec "$1" mysql -h127.0.0.1 -u"$MYSQL_USER" -p"$MYSQL_PASSWORD" -e 'SELECT 1' "$MYSQL_DB" >/dev/null 2>&1 ;;
     esac
 }
 
 wait_ready() {
     local name="$1"
-    for _ in $(seq 1 60); do
+    # MySQL takes a while to set up its data directory on first start.
+    for _ in $(seq 1 120); do
         is_ready "$name" && return 0
         sleep 1
     done
@@ -126,6 +145,7 @@ connection_string() {
     case "$SERVICE" in
         postgres) echo "postgres://$PG_USER:$PG_PASSWORD@$HOST:$1/$PG_DB" ;;
         redis)    echo "redis://$HOST:$1" ;;
+        mysql)    echo "mysql://$MYSQL_USER:$MYSQL_PASSWORD@$HOST:$1/$MYSQL_DB" ;;
     esac
 }
 
@@ -168,9 +188,9 @@ for i in "${!names[@]}"; do
     printf "%-18s %-14s %-22s %s\n" "$name" "$id" "$HOST:$port" "$(connection_string "$port")"
 done
 
-# Ready to paste into config.json
+# Ready to paste into <service>-config.json
 echo
-echo "backends for config.json:"
+echo "backends for $SERVICE-config.json:"
 echo "    \"backends\": ["
 for i in "${!names[@]}"; do
     sep=","

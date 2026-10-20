@@ -1,0 +1,82 @@
+{
+    "proxy": {
+        "listen_address": "0.0.0.0",
+        "listen_port": 8317,
+        "cores": 4
+    },
+    "routing": {
+        "strategy": "roundRobin"
+    },
+    "backends": [
+        {
+            "name": "REDIS-1",
+            "host": "192.168.1.155",
+            "port": 16379,
+            "timeout_seconds": 30,
+            "weight": 1
+        },
+        {
+            "name": "REDIS-2",
+            "host": "192.168.1.155",
+            "port": 16380,
+            "timeout_seconds": 30,
+            "weight": 1
+        },
+        {
+            "name": "REDIS-3",
+            "host": "192.168.1.155",
+            "port": 16381,
+            "timeout_seconds": 30,
+            "weight": 1
+        },
+        {
+            "name": "REDIS-4",
+            "host": "192.168.1.155",
+            "port": 16382,
+            "timeout_seconds": 30,
+            "weight": 1
+        },
+        {
+            "name": "REDIS-5",
+            "host": "192.168.1.155",
+            "port": 16383,
+            "timeout_seconds": 30,
+            "weight": 1
+        },
+        {
+            "name": "REDIS-6",
+            "host": "192.168.1.155",
+            "port": 16384,
+            "timeout_seconds": 30,
+            "weight": 1
+        },
+        {
+            "name": "REDIS-7",
+            "host": "192.168.1.155",
+            "port": 16385,
+            "timeout_seconds": 30,
+            "weight": 1
+        },
+        {
+            "name": "REDIS-8",
+            "host": "192.168.1.155",
+            "port": 16386,
+            "timeout_seconds": 30,
+            "weight": 1
+        },
+        {
+            "name": "REDIS-9",
+            "host": "192.168.1.155",
+            "port": 16387,
+            "timeout_seconds": 30,
+            "weight": 1
+        },
+        {
+            "name": "REDIS-10",
+            "host": "192.168.1.155",
+            "port": 16388,
+            "timeout_seconds": 30,
+            "weight": 1
+        }
+    ]
+}

@@ -1,0 +1,40 @@
+{
+    "proxy": {
+        "listen_address": "0.0.0.0",
+        "listen_port": 8317,
+        "cores": 6
+    },
+    "routing": {
+        "strategy": "roundRobin"
+    },
+    "backends": [
+        {
+            "name": "MYSQL-1",
+            "host": "192.168.1.155",
+            "port": 13306,
+            "timeout_seconds": 30,
+            "weight": 1
+        },
+        {
+            "name": "MYSQL-2",
+            "host": "192.168.1.155",
+            "port": 13307,
+            "timeout_seconds": 30,
+            "weight": 1
+        },
+        {
+            "name": "MYSQL-3",
+            "host": "192.168.1.155",
+            "port": 13308,
+            "timeout_seconds": 30,
+            "weight": 1
+        },
+        {
+            "name": "MYSQL-4",
+            "host": "192.168.1.155",
+            "port": 13309,
+            "timeout_seconds": 30,
+            "weight": 1
+        }
+    ]
+}

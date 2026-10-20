@@ -15,8 +15,8 @@ pub struct Config {
 @json
 pub struct Proxy {
     @json("listen_address") pub String  listenAddress
-    @json("listen_port")    pub u16     listenPort = 8192
-    @json("max_payload")    pub u64     maxPayload = 64KiB
+    @json("listen_port")    pub u16     listenPort  = 8192
+    @json("cores")          pub u8      cores       = 1
 }
 
 @json
@@ -55,8 +55,6 @@ pub Config *load(str path) {
     if cfg.proxy.listenAddress.len == 0 {
         cfg.proxy.listenAddress = "0.0.0.0".copy()
     }
-
-    cfg.proxy.maxPayload *= 1KiB
 
     Config *p = alloc(Config, 1).ptr
     *p = cfg

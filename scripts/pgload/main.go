@@ -46,7 +46,7 @@ func main() {
 	clients := flag.Int("clients", 1, "number of concurrent clients")
 	requests := flag.Int("requests", 100, "requests per client")
 	host := flag.String("host", "", "proxy host (default: this machine's 192.168.1.x address)")
-	port := flag.Int("port", 0, "proxy port (default: proxy.listen_port in config.json)")
+	port := flag.Int("port", 0, "proxy port (default: proxy.listen_port in postgres-config.json)")
 	pool := flag.Int("pool", 0, "share a pool of this many connections between the clients (default: one connection per client)")
 	query := flag.String("query", "SELECT 1", "query each request runs")
 	every := flag.Duration("every", 5*time.Second, "how often to log")
@@ -232,11 +232,11 @@ func lanAddress() string {
 	return ""
 }
 
-// proxy.listen_port from the repo's config.json, found by walking up from here.
+// proxy.listen_port from the repo's postgres-config.json, found by walking up from here.
 func configPort() int {
 	dir, _ := os.Getwd()
 	for {
-		data, err := os.ReadFile(filepath.Join(dir, "config.json"))
+		data, err := os.ReadFile(filepath.Join(dir, "postgres-config.json"))
 		if err == nil {
 			var cfg struct {
 				Proxy struct {
@@ -244,7 +244,7 @@ func configPort() int {
 				} `json:"proxy"`
 			}
 			if err := json.Unmarshal(data, &cfg); err != nil || cfg.Proxy.ListenPort == 0 {
-				fail("config.json has no proxy.listen_port, pass --port")
+				fail("postgres-config.json has no proxy.listen_port, pass --port")
 			}
 			return cfg.Proxy.ListenPort
 		} else if !errors.Is(err, os.ErrNotExist) {
@@ -252,7 +252,7 @@ func configPort() int {
 		}
 		parent := filepath.Dir(dir)
 		if parent == dir {
-			fail("config.json not found, pass --port")
+			fail("postgres-config.json not found, pass --port")
 		}
 		dir = parent
 	}
