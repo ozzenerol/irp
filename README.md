@@ -2,7 +2,10 @@
 
 A TCP reverse proxy written in Iris. It spreads client connections across backends round-robin.
 
-Currently it only works with Postgres.
+Currently it only works with the following services:
+- PostgreSQL
+- MySQL
+- Redis
 
 ## Run
 
