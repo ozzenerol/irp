@@ -1,4 +1,4 @@
-import "config", "server"
+import "src/config", "src/server"
 import log, os, flags
 
 @flags

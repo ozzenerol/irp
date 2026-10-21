@@ -37,11 +37,30 @@ MYSQL_PASSWORD="irp"
 MYSQL_DB="irp"
 MYSQL_BASE_PORT=13306
 
+MONGO_IMAGE="mongo:8.0"
+MONGO_BASE_PORT=17017
+
+RABBITMQ_IMAGE="rabbitmq:4.1-alpine"
+RABBITMQ_USER="irp"
+RABBITMQ_PASSWORD="irp"
+RABBITMQ_BASE_PORT=17672
+
+NATS_IMAGE="nats:2.11-alpine"
+NATS_BASE_PORT=14222
+
+KAFKA_IMAGE="apache/kafka:4.1.0"
+KAFKA_BASE_PORT=19092
+KAFKA_TOPIC="load"
+# Kafka clients connect to the address a broker advertises, not the one they
+# bootstrapped from, so every broker advertises the proxy.
+KAFKA_PROXY_PORT=8317
+
 usage() {
     cat <<EOF
-usage: $0 --service=<postgres|redis|mysql> [--instances=N] [--down]
+usage: $0 --service=<postgres|redis|mysql|mongo|rabbitmq|nats|kafka> [--instances=N] [--down]
 
-  --service=NAME   service to run: postgres, redis, mysql
+  --service=NAME   service to run: postgres, redis, mysql, mongo, rabbitmq,
+                   nats, kafka
   --instances=N    number of instances to start (default 1)
   --down           stop and remove all irp-<service>-* containers
 EOF
@@ -62,6 +81,10 @@ case "$SERVICE" in
     postgres) IMAGE="$PG_IMAGE";    BASE_PORT="$PG_BASE_PORT";    INTERNAL_PORT=5432 ;;
     redis)    IMAGE="$REDIS_IMAGE"; BASE_PORT="$REDIS_BASE_PORT"; INTERNAL_PORT=6379 ;;
     mysql)    IMAGE="$MYSQL_IMAGE"; BASE_PORT="$MYSQL_BASE_PORT"; INTERNAL_PORT=3306 ;;
+    mongo)    IMAGE="$MONGO_IMAGE"; BASE_PORT="$MONGO_BASE_PORT"; INTERNAL_PORT=27017 ;;
+    rabbitmq) IMAGE="$RABBITMQ_IMAGE"; BASE_PORT="$RABBITMQ_BASE_PORT"; INTERNAL_PORT=5672 ;;
+    nats)     IMAGE="$NATS_IMAGE"; BASE_PORT="$NATS_BASE_PORT"; INTERNAL_PORT=4222 ;;
+    kafka)    IMAGE="$KAFKA_IMAGE"; BASE_PORT="$KAFKA_BASE_PORT"; INTERNAL_PORT=9092 ;;
     "")       echo "missing --service" >&2; usage 1 ;;
     *)        echo "unsupported service: $SERVICE" >&2; usage 1 ;;
 esac
@@ -119,6 +142,41 @@ start_instance() {
                 -e MYSQL_DATABASE="$MYSQL_DB" \
                 "$IMAGE" --max-connections=1000 >/dev/null
             ;;
+        mongo)
+            docker run -d --name "$name" \
+                -p "$HOST:$port:$INTERNAL_PORT" \
+                "$IMAGE" >/dev/null
+            ;;
+        rabbitmq)
+            docker run -d --name "$name" \
+                -p "$HOST:$port:$INTERNAL_PORT" \
+                -e RABBITMQ_DEFAULT_USER="$RABBITMQ_USER" \
+                -e RABBITMQ_DEFAULT_PASS="$RABBITMQ_PASSWORD" \
+                "$IMAGE" >/dev/null
+            ;;
+        nats)
+            docker run -d --name "$name" \
+                -p "$HOST:$port:$INTERNAL_PORT" \
+                "$IMAGE" -m 8222 >/dev/null
+            ;;
+        kafka)
+            # A single-node KRaft cluster. LOCAL is for the tools inside the
+            # container, which can't reach the proxy.
+            docker run -d --name "$name" \
+                -p "$HOST:$port:$INTERNAL_PORT" \
+                -e KAFKA_NODE_ID=1 \
+                -e KAFKA_PROCESS_ROLES=broker,controller \
+                -e KAFKA_LISTENERS=PLAINTEXT://:9092,LOCAL://localhost:19092,CONTROLLER://localhost:9093 \
+                -e KAFKA_ADVERTISED_LISTENERS=PLAINTEXT://$HOST:$KAFKA_PROXY_PORT,LOCAL://localhost:19092 \
+                -e KAFKA_LISTENER_SECURITY_PROTOCOL_MAP=PLAINTEXT:PLAINTEXT,LOCAL:PLAINTEXT,CONTROLLER:PLAINTEXT \
+                -e KAFKA_CONTROLLER_LISTENER_NAMES=CONTROLLER \
+                -e KAFKA_INTER_BROKER_LISTENER_NAME=LOCAL \
+                -e KAFKA_CONTROLLER_QUORUM_VOTERS=1@localhost:9093 \
+                -e KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR=1 \
+                -e KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR=1 \
+                -e KAFKA_TRANSACTION_STATE_LOG_MIN_ISR=1 \
+                "$IMAGE" >/dev/null
+            ;;
     esac
 }
 
@@ -128,6 +186,14 @@ is_ready() {
         redis)    docker exec "$1" redis-cli ping 2>/dev/null | grep -q PONG ;;
         # Over TCP: the server MySQL runs while it sets up has no network.
         mysql)    docker exec "$1" mysql -h127.0.0.1 -u"$MYSQL_USER" -p"$MYSQL_PASSWORD" -e 'SELECT 1' "$MYSQL_DB" >/dev/null 2>&1 ;;
+        mongo)    docker exec "$1" mongosh --quiet --eval 'db.runCommand({ping: 1}).ok' 2>/dev/null | grep -q 1 ;;
+        # ping alone passes before the AMQP listener is up.
+        rabbitmq) docker exec "$1" rabbitmq-diagnostics -q check_port_connectivity >/dev/null 2>&1 ;;
+        nats)     docker exec "$1" wget -qO- http://localhost:8222/healthz 2>/dev/null | grep -q ok ;;
+        # Creates the topic too: every broker needs it, and through the proxy
+        # there's no telling which broker a client asks to create it.
+        kafka)    docker exec "$1" /opt/kafka/bin/kafka-topics.sh --bootstrap-server localhost:19092 \
+                      --create --if-not-exists --topic "$KAFKA_TOPIC" --partitions 1 >/dev/null 2>&1 ;;
     esac
 }
 
@@ -146,6 +212,10 @@ connection_string() {
         postgres) echo "postgres://$PG_USER:$PG_PASSWORD@$HOST:$1/$PG_DB" ;;
         redis)    echo "redis://$HOST:$1" ;;
         mysql)    echo "mysql://$MYSQL_USER:$MYSQL_PASSWORD@$HOST:$1/$MYSQL_DB" ;;
+        mongo)    echo "mongodb://$HOST:$1/?directConnection=true" ;;
+        rabbitmq) echo "amqp://$RABBITMQ_USER:$RABBITMQ_PASSWORD@$HOST:$1/" ;;
+        nats)     echo "nats://$HOST:$1" ;;
+        kafka)    echo "kafka://$HOST:$1 (advertises $HOST:$KAFKA_PROXY_PORT)" ;;
     esac
 }
 
@@ -188,9 +258,9 @@ for i in "${!names[@]}"; do
     printf "%-18s %-14s %-22s %s\n" "$name" "$id" "$HOST:$port" "$(connection_string "$port")"
 done
 
-# Ready to paste into <service>-config.json
+# Ready to paste into config/<service>-config.json
 echo
-echo "backends for $SERVICE-config.json:"
+echo "backends for config/$SERVICE-config.json:"
 echo "    \"backends\": ["
 for i in "${!names[@]}"; do
     sep=","

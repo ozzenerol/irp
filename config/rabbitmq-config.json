@@ -1,0 +1,33 @@
+{
+    "proxy": {
+        "listen_address": "0.0.0.0",
+        "listen_port": 8317,
+        "cores": 4
+    },
+    "routing": {
+        "strategy": "roundRobin"
+    },
+    "backends": [
+        {
+            "name": "RABBITMQ-1",
+            "host": "192.168.1.155",
+            "port": 17672,
+            "timeout_seconds": 30,
+            "weight": 1
+        },
+        {
+            "name": "RABBITMQ-2",
+            "host": "192.168.1.155",
+            "port": 17673,
+            "timeout_seconds": 30,
+            "weight": 1
+        },
+        {
+            "name": "RABBITMQ-3",
+            "host": "192.168.1.155",
+            "port": 17674,
+            "timeout_seconds": 30,
+            "weight": 1
+        }
+    ]
+}

@@ -1,4 +1,4 @@
-import "config"
+import "src/config"
 import log, net
 
 pub struct Server {

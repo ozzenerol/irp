@@ -1,4 +1,4 @@
-import "config"
+import "src/config"
 
 pub enum StrategyDispatchError {
     invalidStrategy
